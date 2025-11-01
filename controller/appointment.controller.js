@@ -1,5 +1,6 @@
 const Appointment = require("../model/appointment");
 const twilio = require("twilio");
+const nodemailer = require("nodemailer");
 
 // Twilio credentials
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -82,13 +83,10 @@ exports.bookAppointment = async (req, res) => {
 
     if (!doctor_name || !date || !time || !name || !email || !phone) {
       console.log("⚠️ Missing booking fields!");
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required." });
+      return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
     const existing = await Appointment.findOne({ where: { doctor_name, date, time } });
-
     if (existing) {
       console.log("⛔ Duplicate booking attempt:", { doctor_name, date, time });
       return res.status(400).json({
@@ -98,32 +96,38 @@ exports.bookAppointment = async (req, res) => {
     }
 
     console.log("💾 Saving appointment to DB...");
-    const appointment = await Appointment.create({
-      doctor_name,
-      date,
-      time,
-      name,
-      email,
-      phone,
-    });
-    console.log("✅ Appointment saved:", appointment.dataValues);
+    const appointment = await Appointment.create({ doctor_name, date, time, name, email, phone });
+    console.log("✅ Appointment saved:", appointment);
 
-    const messageBody = `Hello ${name}, your appointment with ${doctor_name} is confirmed!\n\n🗓️ Date: ${date}\n⏰ Time: ${time}\n\nThank you for booking with us.`;
-
-    console.log("📤 Sending SMS via Twilio...");
-    const msg = await client.messages.create({
-      from: twilioNumber,
-      to: `+91${phone}`,
-      body: messageBody,
+    // ✅ Send email via Nodemailer
+    console.log("📤 Sending confirmation email...");
+    
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail", // you can use Gmail, Outlook, etc.
+      auth: {
+        user: process.env.EMAIL_USER,  // your email
+        pass: process.env.EMAIL_PASS,  // your email app password
+      },
     });
 
-    console.log("✅ SMS sent successfully:", msg.sid);
+    // Email content
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Appointment Confirmation",
+      text: `Hello ${name}, your appointment with ${doctor_name} is confirmed!\n\n🗓️ Date: ${date}\n⏰ Time: ${time}\n\nThank you for booking with us.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Confirmation email sent successfully!");
 
     return res.status(201).json({
       success: true,
-      message: `Appointment booked successfully with ${doctor_name}. Confirmation SMS sent.`,
+      message: `Appointment booked successfully with ${doctor_name}. Confirmation email sent.`,
       data: appointment,
     });
+
   } catch (error) {
     console.error("❌ Error booking appointment:", error);
     return res.status(500).json({ success: false, message: "Server error." });
