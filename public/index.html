@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wingspan Global Clinic — Book Appointment</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-blue-50 min-h-screen flex items-center justify-center">
+  <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center mb-6 text-blue-700">🩺 Book a Free 15-Minute Consultation</h2>
+
+    <form id="appointmentForm" class="space-y-4">
+      <!-- Doctor Selection -->
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Select Doctor</label>
+        <select id="doctor_name" class="w-full border border-gray-300 p-2 rounded-lg">
+          <option value="">-- Choose Doctor --</option>
+          <option value="Vaidehi Kansara">Vaidehi Kansara (Clinical Psychologist)</option>
+          <option value="Cherish Mundhra">Cherish Mundhra (Clinical Psychologist)</option>
+          <option value="Athira P Sasidas">Athira P Sasidas (Psychologist)</option>
+        </select>
+      </div>
+
+      <!-- Date -->
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Date</label>
+        <input type="date" id="date" class="w-full border border-gray-300 p-2 rounded-lg">
+      </div>
+
+      <!-- Time -->
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Time</label>
+        <input type="time" id="time" class="w-full border border-gray-300 p-2 rounded-lg">
+      </div>
+
+      <!-- Patient Info -->
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Full Name</label>
+        <input type="text" id="name" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Enter your name">
+      </div>
+
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Email</label>
+        <input type="email" id="email" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Enter your email">
+      </div>
+
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Phone (WhatsApp)</label>
+        <input type="text" id="phone" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="10-digit number">
+      </div>
+
+      <button type="button" id="checkBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg transition">
+        🔍 Check Availability
+      </button>
+
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition hidden" id="bookBtn">
+        ✅ Book Appointment
+      </button>
+    </form>
+
+    <p id="message" class="text-center mt-4 font-medium"></p>
+  </div>
+
+  <script>
+    const checkBtn = document.getElementById("checkBtn");
+    const bookBtn = document.getElementById("bookBtn");
+    const msg = document.getElementById("message");
+    const form = document.getElementById("appointmentForm");
+
+    checkBtn.addEventListener("click", async () => {
+      const doctor_name = document.getElementById("doctor_name").value;
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+
+      if (!doctor_name || !date || !time) {
+        msg.textContent = "⚠️ Please fill all fields before checking availability.";
+        msg.className = "text-center mt-4 text-red-600 font-medium";
+        return;
+      }
+
+      msg.textContent = "⏳ Checking availability...";
+      msg.className = "text-center mt-4 text-gray-600";
+
+      try {
+        const res = await fetch("/api/check-availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doctor_name, date, time })
+        });
+
+        const data = await res.json();
+
+        if (data.available) {
+          msg.textContent = "✅ Slot is available! You can now book.";
+          msg.className = "text-center mt-4 text-green-600 font-medium";
+          bookBtn.classList.remove("hidden");
+        } else {
+          msg.textContent = "❌ " + data.message;
+          msg.className = "text-center mt-4 text-red-600 font-medium";
+        }
+      } catch (error) {
+        msg.textContent = "⚠️ Error checking availability.";
+        msg.className = "text-center mt-4 text-red-600 font-medium";
+      }
+    });
+
+    // BOOKING HANDLER
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const doctor_name = document.getElementById("doctor_name").value;
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+      const name = document.getElementById("name").value;
+      const email = document.getElementById("email").value;
+      const phone = document.getElementById("phone").value;
+
+      msg.textContent = "⏳ Booking your appointment...";
+      msg.className = "text-center mt-4 text-gray-600";
+
+      try {
+        const res = await fetch("/api/book-appointment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doctor_name, date, time, name, email, phone })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          msg.textContent = "🎉 " + data.message;
+          msg.className = "text-center mt-4 text-green-600 font-medium";
+          form.reset();
+          bookBtn.classList.add("hidden");
+        } else {
+          msg.textContent = "❌ " + data.message;
+          msg.className = "text-center mt-4 text-red-600 font-medium";
+        }
+      } catch (error) {
+        msg.textContent = "⚠️ Server error while booking.";
+        msg.className = "text-center mt-4 text-red-600 font-medium";
+      }
+    });
+  </script>
+</body>
+</html>
